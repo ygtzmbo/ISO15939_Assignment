@@ -5,84 +5,86 @@ import java.awt.*;
 import java.util.List;
 
 public class RadarChart extends JPanel {
-    private List<String> labels;
-    private List<Double> values;
-    private final int MAX_SCORE = 5;
+    private List<String> axisLabels;
+    private List<Double> dataIndices;
+    private static final int SCALE_LIMIT = 5;
 
     public RadarChart() {
         setOpaque(false);
-        setPreferredSize(new Dimension(300, 300));
+        setPreferredSize(new java.awt.Dimension(320, 320));
     }
 
-    public void setData(List<String> labels, List<Double> values) {
-        this.labels = labels;
-        this.values = values;
+    public void setData(List<String> labels, List<Double> points) {
+        this.axisLabels = labels;
+        this.dataIndices = points;
         repaint();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        if (labels == null || labels.isEmpty()) return;
+        if (axisLabels == null || axisLabels.isEmpty()) return;
 
-        Graphics2D g2 = (Graphics2D) g;
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        Graphics2D canvas = (Graphics2D) g;
+        canvas.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        int width = getWidth();
-        int height = getHeight();
-        int centerX = width / 2;
-        int centerY = height / 2;
-        int radius = Math.min(width, height) / 2 - 40;
+        int w = getWidth();
+        int h = getHeight();
+        int midX = w / 2;
+        int midY = h / 2;
+        int maxRadius = Math.min(w, h) / 2 - 50;
 
-        int numAxes = labels.size();
-        double angleStep = 2 * Math.PI / numAxes;
+        int axesCount = axisLabels.size();
+        double sliceAngle = 2 * Math.PI / axesCount;
 
-        // Draw background circles/polygons
-        g2.setColor(Color.LIGHT_GRAY);
-        for (int i = 1; i <= MAX_SCORE; i++) {
-            int r = radius * i / MAX_SCORE;
-            drawPolygon(g2, centerX, centerY, r, numAxes, angleStep, false);
+        // Render grid skeleton
+        canvas.setColor(new Color(200, 200, 200));
+        for (int step = 1; step <= SCALE_LIMIT; step++) {
+            int currentR = maxRadius * step / SCALE_LIMIT;
+            renderWireframe(canvas, midX, midY, currentR, axesCount, sliceAngle);
         }
 
-        // Draw axes
-        g2.setColor(Color.GRAY);
-        for (int i = 0; i < numAxes; i++) {
-            double angle = i * angleStep - Math.PI / 2;
-            int x2 = centerX + (int) (radius * Math.cos(angle));
-            int y2 = centerY + (int) (radius * Math.sin(angle));
-            g2.drawLine(centerX, centerY, x2, y2);
+        // Render axes and annotations
+        canvas.setColor(Color.DARK_GRAY);
+        canvas.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        for (int i = 0; i < axesCount; i++) {
+            double theta = i * sliceAngle - Math.PI / 2;
+            int endX = midX + (int) (maxRadius * Math.cos(theta));
+            int endY = midY + (int) (maxRadius * Math.sin(theta));
+            canvas.drawLine(midX, midY, endX, endY);
 
-            // Labels
-            String label = labels.get(i);
-            int lx = centerX + (int) ((radius + 20) * Math.cos(angle)) - 20;
-            int ly = centerY + (int) ((radius + 20) * Math.sin(angle));
-            g2.drawString(label, lx, ly);
+            String text = axisLabels.get(i);
+            int tx = midX + (int) ((maxRadius + 25) * Math.cos(theta)) - 25;
+            int ty = midY + (int) ((maxRadius + 15) * Math.sin(theta));
+            canvas.drawString(text, tx, ty);
         }
 
-        // Draw data polygon
-        g2.setColor(new Color(52, 152, 219, 150));
-        Polygon dataPoly = new Polygon();
-        for (int i = 0; i < numAxes; i++) {
-            double val = values.get(i);
-            double angle = i * angleStep - Math.PI / 2;
-            int r = (int) (radius * val / MAX_SCORE);
-            int x = centerX + (int) (r * Math.cos(angle));
-            int y = centerY + (int) (r * Math.sin(angle));
-            dataPoly.addPoint(x, y);
-        }
-        g2.fill(dataPoly);
-        g2.setColor(new Color(52, 152, 219));
-        g2.setStroke(new BasicStroke(2));
-        g2.draw(dataPoly);
+        // Render data overlay
+        renderOverlay(canvas, midX, midY, maxRadius, axesCount, sliceAngle);
     }
 
-    private void drawPolygon(Graphics2D g2, int cx, int cy, int r, int sides, double angleStep, boolean fill) {
-        Polygon p = new Polygon();
-        for (int i = 0; i < sides; i++) {
-            double angle = i * angleStep - Math.PI / 2;
-            p.addPoint(cx + (int) (r * Math.cos(angle)), cy + (int) (r * Math.sin(angle)));
+    private void renderWireframe(Graphics2D g2, int cx, int cy, int r, int points, double step) {
+        Polygon poly = new Polygon();
+        for (int i = 0; i < points; i++) {
+            double a = i * step - Math.PI / 2;
+            poly.addPoint(cx + (int) (r * Math.cos(a)), cy + (int) (r * Math.sin(a)));
         }
-        if (fill) g2.fill(p);
-        else g2.draw(p);
+        g2.draw(poly);
+    }
+
+    private void renderOverlay(Graphics2D g2, int cx, int cy, int maxR, int count, double step) {
+        Polygon shape = new Polygon();
+        for (int i = 0; i < count; i++) {
+            double magnitude = dataIndices.get(i);
+            double a = i * step - Math.PI / 2;
+            int r = (int) (maxR * magnitude / SCALE_LIMIT);
+            shape.addPoint(cx + (int) (r * Math.cos(a)), cy + (int) (r * Math.sin(a)));
+        }
+        
+        g2.setColor(new Color(41, 128, 185, 120));
+        g2.fill(shape);
+        g2.setColor(new Color(41, 128, 185));
+        g2.setStroke(new BasicStroke(2.5f));
+        g2.draw(shape);
     }
 }
