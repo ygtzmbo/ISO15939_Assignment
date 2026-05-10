@@ -49,7 +49,7 @@ The simulator follows a 5-phase wizard process:
 ## Screenshot Demonstration
 Below is a visual demonstration of the application in action:
 
-![Application Screenshot](screenshot.png)
+![Application Screenshot](screenshot1.png)
 
 ---
 
