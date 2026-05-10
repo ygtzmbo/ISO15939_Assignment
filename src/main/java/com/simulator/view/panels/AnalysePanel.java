@@ -8,97 +8,97 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Final step panel for result analysis and visualization.
+ */
 public class AnalysePanel extends StepPanel {
-    private JPanel resultsPanel;
-    private RadarChart radarChart;
-    private JLabel lblFinalScore;
-    private JTextArea txtGapAnalysis;
+    private final JPanel summaryBox;
+    private final RadarChart spiderGraph;
+    private final JLabel scoreSummary;
+    private final JTextArea gapReport;
 
     public AnalysePanel() {
         setLayout(new BorderLayout());
 
-        // Left side: Progress bars and Final Score
-        JPanel leftPanel = new JPanel();
-        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
-        leftPanel.setOpaque(false);
-        leftPanel.setPreferredSize(new java.awt.Dimension(350, 400));
+        JPanel sidebar = new JPanel();
+        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+        sidebar.setOpaque(false);
+        sidebar.setPreferredSize(new java.awt.Dimension(350, 400));
 
-        resultsPanel = new JPanel();
-        resultsPanel.setLayout(new BoxLayout(resultsPanel, BoxLayout.Y_AXIS));
-        resultsPanel.setOpaque(false);
+        summaryBox = new JPanel();
+        summaryBox.setLayout(new BoxLayout(summaryBox, BoxLayout.Y_AXIS));
+        summaryBox.setOpaque(false);
         
-        leftPanel.add(new JLabel("Dimension Scores:"));
-        leftPanel.add(Box.createVerticalStrut(10));
-        leftPanel.add(resultsPanel);
-        leftPanel.add(Box.createVerticalGlue());
+        sidebar.add(new JLabel("Performance Metrics:"));
+        sidebar.add(Box.createVerticalStrut(10));
+        sidebar.add(summaryBox);
+        sidebar.add(Box.createVerticalGlue());
 
-        lblFinalScore = new JLabel("Final Weighted Score: 0.0");
-        lblFinalScore.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        lblFinalScore.setForeground(new Color(44, 62, 80));
-        leftPanel.add(lblFinalScore);
-        leftPanel.add(Box.createVerticalStrut(20));
+        scoreSummary = new JLabel("Aggregate Weighted Index: 0.0");
+        scoreSummary.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        scoreSummary.setForeground(new Color(20, 40, 60));
+        sidebar.add(scoreSummary);
+        sidebar.add(Box.createVerticalStrut(20));
 
-        add(leftPanel, BorderLayout.WEST);
+        add(sidebar, BorderLayout.WEST);
 
-        // Center: Radar Chart
-        radarChart = new RadarChart();
-        add(radarChart, BorderLayout.CENTER);
+        spiderGraph = new RadarChart();
+        add(spiderGraph, BorderLayout.CENTER);
 
-        // Bottom: Gap Analysis
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setOpaque(false);
-        bottomPanel.setBorder(BorderFactory.createTitledBorder("Gap Analysis"));
+        JPanel infoRegion = new JPanel(new BorderLayout());
+        infoRegion.setOpaque(false);
+        infoRegion.setBorder(BorderFactory.createTitledBorder("Strategic Gap Analysis"));
         
-        txtGapAnalysis = new JTextArea(4, 50);
-        txtGapAnalysis.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        txtGapAnalysis.setEditable(false);
-        txtGapAnalysis.setLineWrap(true);
-        txtGapAnalysis.setWrapStyleWord(true);
-        bottomPanel.add(new JScrollPane(txtGapAnalysis), BorderLayout.CENTER);
+        gapReport = new JTextArea(4, 50);
+        gapReport.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        gapReport.setEditable(false);
+        gapReport.setLineWrap(true);
+        gapReport.setWrapStyleWord(true);
+        infoRegion.add(new JScrollPane(gapReport), BorderLayout.CENTER);
         
-        add(bottomPanel, BorderLayout.SOUTH);
+        add(infoRegion, BorderLayout.SOUTH);
     }
 
-    public void updateAnalysis(Scenario scenario) {
-        resultsPanel.removeAll();
-        List<String> labels = new ArrayList<>();
-        List<Double> values = new ArrayList<>();
-        StringBuilder gapText = new StringBuilder();
+    public void processAnalytics(Scenario activeScenario) {
+        summaryBox.removeAll();
+        List<String> tags = new ArrayList<>();
+        List<Double> metrics = new ArrayList<>();
+        StringBuilder analysisLog = new StringBuilder();
 
-        for (Dimension d : scenario.getDimensions()) {
-            double score = d.getAverageScore();
-            labels.add(d.getName());
-            values.add(score);
+        activeScenario.getAspects().forEach(aspect -> {
+            double mean = aspect.calculateMeanScore();
+            tags.add(aspect.getIdentifier());
+            metrics.add(mean);
 
-            JPanel p = new JPanel(new BorderLayout());
-            p.setOpaque(false);
-            p.setMaximumSize(new java.awt.Dimension(300, 40));
-            p.add(new JLabel(d.getName() + " (" + (int)(d.getWeight()*100) + "%)"), BorderLayout.NORTH);
+            JPanel item = new JPanel(new BorderLayout());
+            item.setOpaque(false);
+            item.setMaximumSize(new java.awt.Dimension(300, 45));
+            item.add(new JLabel(aspect.getIdentifier() + " (Weight: " + (int)(aspect.getImportanceFactor()*100) + "%)"), BorderLayout.NORTH);
             
-            JProgressBar pb = new JProgressBar(0, 50);
-            pb.setValue((int)(score * 10));
-            pb.setStringPainted(true);
-            pb.setString(String.format("%.2f / 5.0", score));
-            p.add(pb, BorderLayout.CENTER);
+            JProgressBar indicator = new JProgressBar(0, 100);
+            indicator.setValue((int)(mean * 20));
+            indicator.setStringPainted(true);
+            indicator.setString(String.format("%.2f pts", mean));
+            item.add(indicator, BorderLayout.CENTER);
             
-            resultsPanel.add(p);
-            resultsPanel.add(Box.createVerticalStrut(10));
+            summaryBox.add(item);
+            summaryBox.add(Box.createVerticalStrut(12));
 
-            // Simple Gap Analysis logic
-            if (score < 3.0) {
-                gapText.append("Critical Gap in ").append(d.getName()).append(": Score is below 3.0. Immediate improvement needed.\n");
-            } else if (score < 4.5) {
-                gapText.append("Moderate Gap in ").append(d.getName()).append(": Room for optimization.\n");
+            // Heuristic Gap Detection
+            if (mean < 2.5) {
+                analysisLog.append("[CRITICAL] ").append(aspect.getIdentifier()).append(" requires immediate corrective action.\n");
+            } else if (mean < 4.0) {
+                analysisLog.append("[MODERATE] ").append(aspect.getIdentifier()).append(" has potential for optimization.\n");
             } else {
-                gapText.append(d.getName()).append(" is performing excellently.\n");
+                analysisLog.append("[OPTIMAL] ").append(aspect.getIdentifier()).append(" meets quality standards.\n");
             }
-        }
+        });
 
-        double finalScore = scenario.calculateFinalScore();
-        lblFinalScore.setText(String.format("Final Weighted Score: %.2f / 5.0", finalScore));
+        double totalIndex = activeScenario.computeOverallResult();
+        scoreSummary.setText(String.format("Aggregate Weighted Index: %.2f / 5.0", totalIndex));
         
-        radarChart.setData(labels, values);
-        txtGapAnalysis.setText(gapText.toString());
+        spiderGraph.setData(tags, metrics);
+        gapReport.setText(analysisLog.toString());
 
         revalidate();
         repaint();
