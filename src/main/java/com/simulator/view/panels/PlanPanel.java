@@ -7,44 +7,47 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
+/**
+ * Panel to display the measurement plan details.
+ */
 public class PlanPanel extends StepPanel {
-    private JTable table;
-    private DefaultTableModel tableModel;
+    private final JTable dataTable;
+    private final DefaultTableModel listModel;
 
     public PlanPanel() {
-        String[] columns = {"Dimension", "Metric", "Description", "Max Value"};
-        tableModel = new DefaultTableModel(columns, 0) {
+        String[] header = {"Quality Aspect", "Data Point", "Information", "Threshold"};
+        listModel = new DefaultTableModel(header, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
-        table = new JTable(tableModel);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        table.setRowHeight(25);
-        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
+        dataTable = new JTable(listModel);
+        dataTable.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        dataTable.setRowHeight(25);
+        dataTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
 
-        JScrollPane scrollPane = new JScrollPane(table);
-        add(scrollPane, BorderLayout.CENTER);
+        JScrollPane container = new JScrollPane(dataTable);
+        add(container, BorderLayout.CENTER);
 
-        JLabel lblInfo = new JLabel("Review the measurement plan for the selected scenario.");
-        lblInfo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        lblInfo.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        add(lblInfo, BorderLayout.NORTH);
+        JLabel statusLabel = new JLabel("Examine the structured measurement strategy below.");
+        statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        statusLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        add(statusLabel, BorderLayout.NORTH);
     }
 
-    public void updatePlan(Scenario scenario) {
-        tableModel.setRowCount(0);
-        if (scenario == null) return;
+    public void refreshSchema(Scenario activeScenario) {
+        listModel.setRowCount(0);
+        if (activeScenario == null) return;
 
-        for (Dimension d : scenario.getDimensions()) {
-            for (Metric m : d.getMetrics()) {
-                tableModel.addRow(new Object[]{
-                    d.getName(),
-                    m.getName(),
-                    m.getDescription(),
-                    m.getMaxValue()
+        activeScenario.getAspects().forEach(aspect -> {
+            aspect.getDataPoints().forEach(point -> {
+                listModel.addRow(new Object[]{
+                    aspect.getIdentifier(),
+                    point.getLabel(),
+                    point.getInfo(),
+                    point.getUpperBound()
                 });
-            }
-        }
+            });
+        });
     }
 
     @Override
