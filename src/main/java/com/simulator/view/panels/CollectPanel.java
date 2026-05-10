@@ -7,14 +7,17 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
+/**
+ * Panel for inputting raw measurement data.
+ */
 public class CollectPanel extends StepPanel {
-    private JTable table;
-    private DefaultTableModel tableModel;
-    private Scenario currentScenario;
+    private final JTable inputGrid;
+    private final DefaultTableModel gridModel;
+    private Scenario activeScenario;
 
     public CollectPanel() {
-        String[] columns = {"Metric", "Max Value", "Raw Value (Input)", "Normalized (1-5)"};
-        tableModel = new DefaultTableModel(columns, 0) {
+        String[] headers = {"Metric Point", "Threshold", "Actual Value (Input)", "Indexed Score (1-5)"};
+        gridModel = new DefaultTableModel(headers, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return column == 2; }
             @Override
@@ -23,58 +26,58 @@ public class CollectPanel extends StepPanel {
             }
         };
         
-        table = new JTable(tableModel);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        table.setRowHeight(30);
-        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
+        inputGrid = new JTable(gridModel);
+        inputGrid.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        inputGrid.setRowHeight(30);
+        inputGrid.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
 
-        // Auto-calculate normalized score on edit
-        tableModel.addTableModelListener(e -> {
-            int row = e.getFirstRow();
-            int col = e.getColumn();
-            if (col == 2) {
-                Double raw = (Double) tableModel.getValueAt(row, 2);
-                Double max = (Double) tableModel.getValueAt(row, 1);
-                if (raw != null && max != null) {
-                    double norm = Math.min(5.0, (raw / max) * 5.0);
-                    tableModel.setValueAt(Math.round(norm * 100.0) / 100.0, row, 3);
+        // Real-time score indexing
+        gridModel.addTableModelListener(e -> {
+            int r = e.getFirstRow();
+            int c = e.getColumn();
+            if (c == 2) {
+                Double val = (Double) gridModel.getValueAt(r, 2);
+                Double limit = (Double) gridModel.getValueAt(r, 1);
+                if (val != null && limit != null && limit > 0) {
+                    double indexed = Math.min(5.0, (val / limit) * 5.0);
+                    gridModel.setValueAt(Math.round(indexed * 100.0) / 100.0, r, 3);
                 }
             }
         });
 
-        JScrollPane scrollPane = new JScrollPane(table);
-        add(scrollPane, BorderLayout.CENTER);
+        JScrollPane wrapper = new JScrollPane(inputGrid);
+        add(wrapper, BorderLayout.CENTER);
 
-        JLabel lblInfo = new JLabel("Enter raw data for each metric. Normalized scores update automatically.");
-        lblInfo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        lblInfo.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        add(lblInfo, BorderLayout.NORTH);
+        JLabel hintLabel = new JLabel("Input the observed metrics. The system calculates indexed results dynamically.");
+        hintLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        hintLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        add(hintLabel, BorderLayout.NORTH);
     }
 
-    public void updateScenario(Scenario scenario) {
-        this.currentScenario = scenario;
-        tableModel.setRowCount(0);
-        if (scenario == null) return;
+    public void setupScenario(Scenario target) {
+        this.activeScenario = target;
+        gridModel.setRowCount(0);
+        if (target == null) return;
 
-        for (Dimension d : scenario.getDimensions()) {
-            for (Metric m : d.getMetrics()) {
-                tableModel.addRow(new Object[]{
-                    m.getName(),
-                    m.getMaxValue(),
+        target.getAspects().forEach(aspect -> {
+            aspect.getDataPoints().forEach(point -> {
+                gridModel.addRow(new Object[]{
+                    point.getLabel(),
+                    point.getUpperBound(),
                     0.0,
                     0.0
                 });
-            }
-        }
+            });
+        });
     }
 
-    public void saveToModel() {
-        if (currentScenario == null) return;
-        int rowIndex = 0;
-        for (Dimension d : currentScenario.getDimensions()) {
-            for (Metric m : d.getMetrics()) {
-                Double raw = (Double) tableModel.getValueAt(rowIndex++, 2);
-                m.setRawValue(raw != null ? raw : 0.0);
+    public void commitData() {
+        if (activeScenario == null) return;
+        int row = 0;
+        for (Dimension aspect : activeScenario.getAspects()) {
+            for (Metric point : aspect.getDataPoints()) {
+                Double value = (Double) gridModel.getValueAt(row++, 2);
+                point.recordData(value != null ? value : 0.0);
             }
         }
     }
@@ -84,14 +87,14 @@ public class CollectPanel extends StepPanel {
 
     @Override
     public boolean validateInput() {
-        for (int i = 0; i < tableModel.getRowCount(); i++) {
-            Double raw = (Double) tableModel.getValueAt(i, 2);
-            if (raw == null || raw < 0) {
-                JOptionPane.showMessageDialog(this, "Please enter valid positive numbers for all metrics.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+        for (int i = 0; i < gridModel.getRowCount(); i++) {
+            Double val = (Double) gridModel.getValueAt(i, 2);
+            if (val == null || val < 0) {
+                JOptionPane.showMessageDialog(this, "Input must be a non-negative numeric value.", "Input Error", JOptionPane.ERROR_MESSAGE);
                 return false;
             }
         }
-        saveToModel();
+        commitData();
         return true;
     }
 }
