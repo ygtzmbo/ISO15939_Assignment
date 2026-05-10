@@ -3,32 +3,40 @@ package com.simulator.model;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Encapsulates a measurement scenario with multiple quality aspects.
+ */
 public class Scenario {
-    private String name;
-    private String mode;
-    private List<Dimension> dimensions;
+    private final String title;
+    private final String category;
+    private final List<Dimension> aspects;
 
-    public Scenario(String name, String mode) {
-        this.name = name;
-        this.mode = mode;
-        this.dimensions = new ArrayList<>();
+    public Scenario(String title, String category) {
+        this.title = title;
+        this.category = category;
+        this.aspects = new ArrayList<>();
     }
 
-    public void addDimension(Dimension dimension) {
-        dimensions.add(dimension);
+    public void registerAspect(Dimension aspect) {
+        aspects.add(aspect);
     }
 
-    public String getName() { return name; }
-    public String getMode() { return mode; }
-    public List<Dimension> getDimensions() { return dimensions; }
+    public String getTitle() { return title; }
+    public String getCategory() { return category; }
+    public List<Dimension> getAspects() { return aspects; }
 
-    public double calculateFinalScore() {
-        double finalScore = 0;
-        double totalWeight = 0;
-        for (Dimension d : dimensions) {
-            finalScore += d.getAverageScore() * d.getWeight();
-            totalWeight += d.getWeight();
-        }
-        return totalWeight == 0 ? 0 : finalScore / totalWeight;
+    /**
+     * Computes the final weighted score for the entire scenario.
+     */
+    public double computeOverallResult() {
+        double totalWeightedScore = aspects.stream()
+                .mapToDouble(a -> a.calculateMeanScore() * a.getImportanceFactor())
+                .sum();
+        
+        double cumulativeImportance = aspects.stream()
+                .mapToDouble(Dimension::getImportanceFactor)
+                .sum();
+
+        return cumulativeImportance == 0 ? 0 : totalWeightedScore / cumulativeImportance;
     }
 }
