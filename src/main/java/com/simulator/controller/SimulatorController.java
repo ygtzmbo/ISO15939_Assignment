@@ -8,117 +8,107 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SimulatorController {
-    private MainFrame view;
-    private MeasurementModel model;
-    private List<StepPanel> steps;
-    private int currentStep = 0;
+    private final MainFrame mainView;
+    private final MeasurementModel coreModel;
+    private final List<StepPanel> workflowSteps;
+    private int activeIndex = 0;
 
-    public SimulatorController(MainFrame view, MeasurementModel model) {
-        this.view = view;
-        this.model = model;
-        this.steps = new ArrayList<>();
+    public SimulatorController(MainFrame mainView, MeasurementModel coreModel) {
+        this.mainView = mainView;
+        this.coreModel = coreModel;
+        this.workflowSteps = new ArrayList<>();
 
-        initializeSteps();
-        setupNavigation();
-        updateView();
+        buildWorkflow();
+        attachNavHandlers();
+        refreshDisplay();
     }
 
-    private void initializeSteps() {
-        steps.add(new ProfilePanel());
-        steps.add(new DefinePanel());
-        steps.add(new PlanPanel());
-        steps.add(new CollectPanel());
-        steps.add(new AnalysePanel());
+    private void buildWorkflow() {
+        workflowSteps.add(new ProfilePanel());
+        workflowSteps.add(new DefinePanel());
+        workflowSteps.add(new PlanPanel());
+        workflowSteps.add(new CollectPanel());
+        workflowSteps.add(new AnalysePanel());
 
-        for (int i = 0; i < steps.size(); i++) {
-            view.addStepPanel(steps.get(i), "Step" + i);
+        for (int i = 0; i < workflowSteps.size(); i++) {
+            mainView.addStepPanel(workflowSteps.get(i), "WorkflowStep" + i);
         }
 
-        // Initialize DefinePanel scenarios
-        updateAvailableScenarios();
+        refreshScenarioRegistry();
         
-        // Add listener for mode change in Step 2
-        DefinePanel dp = (DefinePanel) steps.get(1);
-        dp.getCbMode().addActionListener(e -> updateAvailableScenarios());
+        // Mode switch listener
+        DefinePanel selectionPanel = (DefinePanel) workflowSteps.get(1);
+        selectionPanel.getCbMode().addActionListener(e -> refreshScenarioRegistry());
     }
 
-    private void updateAvailableScenarios() {
-        DefinePanel dp = (DefinePanel) steps.get(1);
-        String mode = dp.getSelectedMode();
-        dp.setScenarios(model.getScenariosForMode(mode));
+    private void refreshScenarioRegistry() {
+        DefinePanel dp = (DefinePanel) workflowSteps.get(1);
+        String category = dp.getSelectedMode();
+        dp.setScenarios(coreModel.filterScenariosByMode(category));
     }
 
-    private void setupNavigation() {
-        view.getBtnNext().addActionListener(e -> nextStep());
-        view.getBtnBack().addActionListener(e -> backStep());
+    private void attachNavHandlers() {
+        mainView.getBtnNext().addActionListener(e -> moveToNext());
+        mainView.getBtnBack().addActionListener(e -> moveToPrevious());
     }
 
-    private void nextStep() {
-        if (!steps.get(currentStep).validateInput()) return;
+    private void moveToNext() {
+        if (!workflowSteps.get(activeIndex).validateInput()) return;
 
-        if (currentStep < steps.size() - 1) {
-            // Update model from current step if needed
-            syncModel(currentStep);
-            
-            currentStep++;
-            
-            // Prepare next step view
-            prepareStep(currentStep);
-            
-            updateView();
+        if (activeIndex < workflowSteps.size() - 1) {
+            persistState(activeIndex);
+            activeIndex++;
+            configureStep(activeIndex);
+            refreshDisplay();
         } else {
-            // Finish or reset?
             System.exit(0);
         }
     }
 
-    private void backStep() {
-        if (currentStep > 0) {
-            currentStep--;
-            updateView();
+    private void moveToPrevious() {
+        if (activeIndex > 0) {
+            activeIndex--;
+            refreshDisplay();
         }
     }
 
-    private void syncModel(int stepIdx) {
-        switch (stepIdx) {
-            case 0: // Profile
-                ProfilePanel pp = (ProfilePanel) steps.get(0);
-                model.setUserName(pp.getUserName());
-                model.setSchool(pp.getSchool());
-                model.setSessionName(pp.getSessionName());
+    private void persistState(int index) {
+        switch (index) {
+            case 0:
+                ProfilePanel pp = (ProfilePanel) workflowSteps.get(0);
+                coreModel.setOperator(pp.getUserName());
+                coreModel.setInstitution(pp.getSchool());
+                coreModel.setTrackingId(pp.getSessionName());
                 break;
-            case 1: // Define
-                DefinePanel dp = (DefinePanel) steps.get(1);
-                model.setQualityType(dp.getSelectedQualityType());
-                model.setMode(dp.getSelectedMode());
-                model.setSelectedScenario(dp.getSelectedScenario());
-                break;
-            case 3: // Collect
-                // Data is already saved to model in validateInput of CollectPanel
-                break;
-        }
-    }
-
-    private void prepareStep(int stepIdx) {
-        switch (stepIdx) {
-            case 2: // Plan
-                ((PlanPanel) steps.get(2)).updatePlan(model.getSelectedScenario());
-                break;
-            case 3: // Collect
-                ((CollectPanel) steps.get(3)).updateScenario(model.getSelectedScenario());
-                break;
-            case 4: // Analyse
-                ((AnalysePanel) steps.get(4)).updateAnalysis(model.getSelectedScenario());
+            case 1:
+                DefinePanel dp = (DefinePanel) workflowSteps.get(1);
+                coreModel.setAssessmentType(dp.getSelectedQualityType());
+                coreModel.setOperationalMode(dp.getSelectedMode());
+                coreModel.setActiveScenario(dp.getSelectedScenario());
                 break;
         }
     }
 
-    private void updateView() {
-        view.showStep("Step" + currentStep);
-        view.setStepTitle(steps.get(currentStep).getStepTitle());
-        view.setStepIndicator(currentStep + 1, steps.size());
+    private void configureStep(int index) {
+        switch (index) {
+            case 2:
+                ((PlanPanel) workflowSteps.get(2)).refreshSchema(coreModel.getActiveScenario());
+                break;
+            case 3:
+                ((CollectPanel) workflowSteps.get(3)).setupScenario(coreModel.getActiveScenario());
+                break;
+            case 4:
+                ((AnalysePanel) workflowSteps.get(4)).processAnalytics(coreModel.getActiveScenario());
+                break;
+        }
+    }
+
+    private void refreshDisplay() {
+        mainView.showStep("WorkflowStep" + activeIndex);
+        mainView.setStepTitle(workflowSteps.get(activeIndex).getStepTitle());
+        mainView.setStepIndicator(activeIndex + 1, workflowSteps.size());
         
-        view.getBtnBack().setEnabled(currentStep > 0);
-        view.getBtnNext().setText(currentStep == steps.size() - 1 ? "Finish" : "Next");
+        mainView.getBtnBack().setEnabled(activeIndex > 0);
+        mainView.getBtnNext().setText(activeIndex == workflowSteps.size() - 1 ? "Complete" : "Proceed");
     }
 }
