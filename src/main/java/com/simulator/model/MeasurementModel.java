@@ -2,81 +2,81 @@ package com.simulator.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
+/**
+ * Main model class holding the application state and scenario data.
+ */
 public class MeasurementModel {
-    private String userName;
-    private String school;
-    private String sessionName;
-    private String qualityType;
-    private String mode;
-    private Scenario selectedScenario;
-    private List<Scenario> availableScenarios;
+    private String operator;
+    private String institution;
+    private String trackingId;
+    private String assessmentType;
+    private String operationalMode;
+    private Scenario activeScenario;
+    private final List<Scenario> registry;
 
     public MeasurementModel() {
-        this.availableScenarios = new ArrayList<>();
-        initializeScenarios();
+        this.registry = new ArrayList<>();
+        populateScenarios();
     }
 
-    private void initializeScenarios() {
+    private void populateScenarios() {
         // Health Mode Scenarios
         Scenario s1 = new Scenario("Hospital Efficiency", "Health");
         Dimension d1 = new Dimension("Patient Care", 0.6);
-        d1.addMetric(new Metric("Wait Time", "Average wait time in hours (Max 10)", 10));
-        d1.addMetric(new Metric("Satisfaction", "Patient satisfaction score (Max 100)", 100));
-        s1.addDimension(d1);
+        d1.registerMetric(new Metric("Wait Time", "Average wait time in hours (Max 10)", 10));
+        d1.registerMetric(new Metric("Satisfaction", "Patient satisfaction score (Max 100)", 100));
+        s1.registerAspect(d1);
         Dimension d2 = new Dimension("Resource Utilization", 0.4);
-        d2.addMetric(new Metric("Bed Occupancy", "Percentage of beds occupied (Max 100)", 100));
-        d2.addMetric(new Metric("Staff Ratio", "Staff-to-patient ratio (Max 1.0)", 1.0));
-        s1.addDimension(d2);
-        availableScenarios.add(s1);
+        d2.registerMetric(new Metric("Bed Occupancy", "Percentage of beds occupied (Max 100)", 100));
+        d2.registerMetric(new Metric("Staff Ratio", "Staff-to-patient ratio (Max 1.0)", 1.0));
+        s1.registerAspect(d2);
+        registry.add(s1);
 
         Scenario s2 = new Scenario("Diagnostic Accuracy", "Health");
         Dimension d3 = new Dimension("Accuracy", 0.7);
-        d3.addMetric(new Metric("Error Rate", "Percentage of errors (Lower is better, but here we assume raw/max)", 10));
-        d3.addMetric(new Metric("Review Time", "Time for expert review (Max 48h)", 48));
-        s2.addDimension(d3);
-        availableScenarios.add(s2);
+        d3.registerMetric(new Metric("Error Rate", "Percentage of errors", 10));
+        d3.registerMetric(new Metric("Review Time", "Time for expert review (Max 48h)", 48));
+        s2.registerAspect(d3);
+        registry.add(s2);
 
         // Education Mode Scenarios
         Scenario s3 = new Scenario("Student Performance", "Education");
         Dimension d4 = new Dimension("Academic", 0.8);
-        d4.addMetric(new Metric("GPA", "Average GPA (Max 4.0)", 4.0));
-        d4.addMetric(new Metric("Completion Rate", "Percentage of students finishing (Max 100)", 100));
-        s3.addDimension(d4);
+        d4.registerMetric(new Metric("GPA", "Average GPA (Max 4.0)", 4.0));
+        d4.registerMetric(new Metric("Completion Rate", "Percentage of students finishing (Max 100)", 100));
+        s3.registerAspect(d4);
         Dimension d5 = new Dimension("Engagement", 0.2);
-        d5.addMetric(new Metric("Attendance", "Average attendance rate (Max 100)", 100));
-        s3.addDimension(d5);
-        availableScenarios.add(s3);
+        d5.registerMetric(new Metric("Attendance", "Average attendance rate (Max 100)", 100));
+        s3.registerAspect(d5);
+        registry.add(s3);
 
         Scenario s4 = new Scenario("Institutional Quality", "Education");
         Dimension d6 = new Dimension("Facilities", 0.5);
-        d6.addMetric(new Metric("Library Usage", "Average weekly visits per student (Max 20)", 20));
-        d6.addMetric(new Metric("Lab Tech", "Investment in labs (Max 1M)", 1000000));
-        s4.addDimension(d6);
-        availableScenarios.add(s4);
+        d6.registerMetric(new Metric("Library Usage", "Average weekly visits per student (Max 20)", 20));
+        d6.registerMetric(new Metric("Lab Tech", "Investment in labs (Max 1M)", 1000000));
+        s4.registerAspect(d6);
+        registry.add(s4);
     }
 
-    public List<Scenario> getScenariosForMode(String mode) {
-        List<Scenario> result = new ArrayList<>();
-        for (Scenario s : availableScenarios) {
-            if (s.getMode().equalsIgnoreCase(mode)) {
-                result.add(s);
-            }
-        }
-        return result;
+    public List<Scenario> filterScenariosByMode(String mode) {
+        return registry.stream()
+                .filter(s -> s.getCategory().equalsIgnoreCase(mode))
+                .collect(Collectors.toList());
     }
 
     // Getters and Setters
-    public String getUserName() { return userName; }
-    public void setUserName(String userName) { this.userName = userName; }
-    public String getSchool() { return school; }
-    public void setSchool(String school) { this.school = school; }
-    public String getSessionName() { return sessionName; }
-    public void setSessionName(String sessionName) { this.sessionName = sessionName; }
-    public String getQualityType() { return qualityType; }
-    public void setQualityType(String qualityType) { this.qualityType = qualityType; }
-    public String getMode() { return mode; }
-    public void setMode(String mode) { this.mode = mode; }
-    public Scenario getSelectedScenario() { return selectedScenario; }
-    public void setSelectedScenario(Scenario selectedScenario) { this.selectedScenario = selectedScenario; }
+    public String getOperator() { return operator; }
+    public void setOperator(String operator) { this.operator = operator; }
+    public String getInstitution() { return institution; }
+    public void setInstitution(String institution) { this.institution = institution; }
+    public String getTrackingId() { return trackingId; }
+    public void setTrackingId(String trackingId) { this.trackingId = trackingId; }
+    public String getAssessmentType() { return assessmentType; }
+    public void setAssessmentType(String assessmentType) { this.assessmentType = assessmentType; }
+    public String getOperationalMode() { return operationalMode; }
+    public void setOperationalMode(String operationalMode) { this.operationalMode = operationalMode; }
+    public Scenario getActiveScenario() { return activeScenario; }
+    public void setActiveScenario(Scenario activeScenario) { this.activeScenario = activeScenario; }
 }
