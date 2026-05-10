@@ -3,31 +3,35 @@ package com.simulator.model;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Represents a specific quality dimension containing multiple metrics.
+ */
 public class Dimension {
-    private String name;
-    private double weight;
-    private List<Metric> metrics;
+    private final String identifier;
+    private final double importanceFactor;
+    private final List<Metric> dataPoints;
 
-    public Dimension(String name, double weight) {
-        this.name = name;
-        this.weight = weight;
-        this.metrics = new ArrayList<>();
+    public Dimension(String identifier, double importanceFactor) {
+        this.identifier = identifier;
+        this.importanceFactor = importanceFactor;
+        this.dataPoints = new ArrayList<>();
     }
 
-    public void addMetric(Metric metric) {
-        metrics.add(metric);
+    public void registerMetric(Metric point) {
+        dataPoints.add(point);
     }
 
-    public String getName() { return name; }
-    public double getWeight() { return weight; }
-    public List<Metric> getMetrics() { return metrics; }
+    public String getIdentifier() { return identifier; }
+    public double getImportanceFactor() { return importanceFactor; }
+    public List<Metric> getDataPoints() { return dataPoints; }
 
-    public double getAverageScore() {
-        if (metrics.isEmpty()) return 0;
-        double sum = 0;
-        for (Metric m : metrics) {
-            sum += m.getNormalizedScore();
-        }
-        return sum / metrics.size();
+    /**
+     * Calculates the mean normalized score across all associated metrics.
+     */
+    public double calculateMeanScore() {
+        return dataPoints.stream()
+                .mapToDouble(Metric::getIndexedResult)
+                .average()
+                .orElse(0.0);
     }
 }
